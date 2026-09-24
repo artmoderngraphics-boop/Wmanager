@@ -54,7 +54,20 @@ function saveData(data) {
 }
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Smart static file serving - check public/ first, then root
+const publicPath = path.join(__dirname, 'public');
+const rootPath = __dirname;
+
+if (fs.existsSync(publicPath) && fs.readdirSync(publicPath).length > 0) {
+  // Use public/ folder if it exists and has files
+  console.log('📁 Serving static files from: public/');
+  app.use(express.static(publicPath));
+} else {
+  // Fallback to root folder
+  console.log('📁 Serving static files from: root');
+  app.use(express.static(rootPath));
+}
 
 // ===== AUTH =====
 app.post('/api/auth/login', (req, res) => {
@@ -248,6 +261,12 @@ app.get('/api/workers', (req, res) => {
   res.json(data.workers);
 });
 
+// Alias endpoint for settings
+app.get('/api/workers/all', (req, res) => {
+  const data = loadData();
+  res.json(data.workers);
+});
+
 app.post('/api/workers', (req, res) => {
   const data = loadData();
   const worker = { id: data.nextWorkerId++, ...req.body };
@@ -345,4 +364,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Work Manager running on http://0.0.0.0:${PORT}`);
+  console.log(`📁 Static files served from: ${fs.existsSync(publicPath) && fs.readdirSync(publicPath).length > 0 ? 'public/' : 'root'}`);
 });
